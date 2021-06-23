@@ -1,0 +1,61 @@
+version: "3.7"
+
+services:
+  phone:
+    container_name: phone
+    image: prebrov/twilio-phone
+    restart: unless-stopped
+    depends_on:
+      - mongodb
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.phone.rule=Host(`phone.${BASE_URL}`)"
+      - "traefik.http.routers.phone.entrypoints=web"
+      - "traefik.http.routers.phone.middlewares=https-redirect@file"
+      - "traefik.http.routers.phone-secured.rule=Host(`phone.${BASE_URL}`)"
+      - "traefik.http.routers.phone-secured.entrypoints=websecure"
+      - "traefik.http.routers.phone-secured.middlewares=secured@file"
+      - "traefik.http.routers.phone-secured.tls=true"
+    environment:
+      - "MONGODB_URI=mongodb://mongodb:27017/phone"
+      - "SESSION_SECRET=${SESSION_SECRET}"
+    # ports:
+    #  - "5000:5000"
+    networks:
+      services_services-net:
+        aliases:
+          - phone
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-I",
+          "--silent",
+          "--show-error",
+          "--fail",
+          "http://localhost:5000",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 6
+
+  mongodb:
+    container_name: mongodb
+    image: mongo
+    restart: unless-stopped
+    volumes:
+      - mongodb:/data/db
+    # ports:
+    #  - "27017:27017"
+    networks:
+      services_services-net:
+        aliases:
+          - mongodb
+
+networks:
+  services_services-net:
+    external: true
+
+volumes:
+  mongodb:
